@@ -1,0 +1,646 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@400;500;700&family=Libre+Franklin:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-primary: #0f0f14;
+            --bg-secondary: #1a1a22;
+            --bg-tertiary: #25252f;
+            --accent-primary: #6b9bd1;
+            --accent-secondary: #8b7ec8;
+            --text-primary: #e8e8f0;
+            --text-secondary: #9898a8;
+            --text-tertiary: #68687a;
+            --glucose-good: #5fb884;
+            --glucose-warning: #d6a461;
+            --glucose-danger: #d67373;
+            --border-subtle: #2a2a38;
+        }
+
+        .light-mode {
+            --bg-primary: #fafbfc;
+            --bg-secondary: #ffffff;
+            --bg-tertiary: #f4f5f7;
+            --accent-primary: #4a7ba7;
+            --accent-secondary: #6b5b95;
+            --text-primary: #1a1a24;
+            --text-secondary: #5a5a6a;
+            --text-tertiary: #8a8a9a;
+            --glucose-good: #3d9970;
+            --glucose-warning: #b8883b;
+            --glucose-danger: #b84d4d;
+            --border-subtle: #e4e5e8;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'DM Sans', sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            overflow: hidden;
+            height: 100vh;
+            width: 100vw;
+            position: relative;
+            transition: background 0.8s ease, color 0.8s ease;
+        }
+
+        /* Circuit Board Background */
+        #circuit-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+            opacity: 0.08;
+            transition: opacity 0.8s ease;
+        }
+
+        .light-mode #circuit-canvas {
+            opacity: 0.04;
+        }
+
+        /* Main Container */
+        .dashboard {
+            position: relative;
+            z-index: 1;
+            height: 100vh;
+            display: grid;
+            grid-template-columns: 280px 1fr auto;
+            grid-template-rows: 1fr auto;
+            padding: 16px;
+            gap: 16px;
+        }
+
+        /* Left Sidebar - Reminders */
+        .reminders-bar {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            grid-row: 1 / 2;
+            grid-column: 1;
+            align-content: start;
+        }
+
+        .reminder {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-subtle);
+            border-radius: 8px;
+            padding: 12px 16px;
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text-primary);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .reminder::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 3px;
+            background: var(--accent-primary);
+        }
+
+        /* Center Content */
+        .center-content {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            gap: 20px;
+            grid-row: 1 / 2;
+            grid-column: 2;
+        }
+
+        /* Clock */
+        .clock-container {
+            display: flex;
+            align-items: baseline;
+            gap: 12px;
+        }
+
+        .clock {
+            font-family: 'Libre Franklin', sans-serif;
+            font-size: 120px;
+            font-weight: 800;
+            letter-spacing: -3px;
+            line-height: 1;
+            color: var(--accent-primary);
+        }
+
+        .period {
+            font-family: 'DM Sans', sans-serif;
+            font-size: 36px;
+            font-weight: 300;
+            color: var(--accent-secondary);
+            letter-spacing: 2px;
+        }
+
+        /* Dexcom Display */
+        .dexcom-container {
+            display: flex;
+            align-items: center;
+            gap: 24px;
+            background: var(--bg-secondary);
+            padding: 24px 40px;
+            border-radius: 12px;
+            border: 2px solid var(--border-subtle);
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+            transition: all 0.4s ease;
+        }
+
+        .dexcom-value {
+            font-family: 'Libre Franklin', sans-serif;
+            font-size: 72px;
+            font-weight: 800;
+            color: var(--glucose-good);
+            line-height: 1;
+            letter-spacing: -2px;
+        }
+
+        .dexcom-trend {
+            font-size: 52px;
+            line-height: 1;
+            color: var(--text-secondary);
+        }
+
+        .dexcom-info {
+            font-family: 'DM Sans', sans-serif;
+            font-size: 14px;
+            color: var(--text-tertiary);
+            font-weight: 500;
+        }
+
+        .dexcom-time {
+            font-size: 12px;
+            color: var(--text-tertiary);
+            margin-top: 6px;
+            font-weight: 400;
+        }
+
+        /* Warning/Danger states */
+        .dexcom-container.warning {
+            border-color: var(--glucose-warning);
+            background: var(--bg-tertiary);
+        }
+
+        .dexcom-container.warning .dexcom-value {
+            color: var(--glucose-warning);
+        }
+
+        .dexcom-container.danger {
+            border-color: var(--glucose-danger);
+            background: var(--bg-tertiary);
+            border-width: 3px;
+        }
+
+        .dexcom-container.danger .dexcom-value {
+            color: var(--glucose-danger);
+        }
+
+        /* Motivational Text Ticker */
+        .ticker-container {
+            width: 100%;
+            overflow: hidden;
+            background: linear-gradient(90deg, var(--bg-primary) 0%, transparent 5%, transparent 95%, var(--bg-primary) 100%);
+            padding: 12px 0;
+            grid-row: 2;
+            grid-column: 1 / -1;
+        }
+
+        .ticker {
+            display: flex;
+            animation: scroll 40s linear infinite;
+            white-space: nowrap;
+        }
+
+        .ticker-text {
+            font-family: 'DM Sans', sans-serif;
+            font-size: 16px;
+            font-weight: 500;
+            color: var(--accent-primary);
+            padding: 0 50px;
+            letter-spacing: 0.5px;
+        }
+
+        @keyframes scroll {
+            0% { transform: translateX(0); }
+            100% { transform: translateX(-50%); }
+        }
+
+        /* Date Display */
+        .date {
+            font-family: 'DM Sans', sans-serif;
+            font-size: 15px;
+            color: var(--text-tertiary);
+            letter-spacing: 1px;
+            text-align: center;
+            font-weight: 500;
+            text-transform: uppercase;
+        }
+
+        /* Status Indicators */
+        .status-bar {
+            position: absolute;
+            bottom: 16px;
+            right: 16px;
+            display: flex;
+            gap: 16px;
+            font-size: 11px;
+            color: var(--text-tertiary);
+            font-weight: 500;
+        }
+
+        .status-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .status-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--glucose-good);
+        }
+    </style>
+</head>
+<body>
+    <!-- Circuit Board Animation Canvas -->
+    <canvas id="circuit-canvas"></canvas>
+
+    <!-- Main Dashboard -->
+    <div class="dashboard">
+        <!-- Left Sidebar - Reminders -->
+        <div class="reminders-bar" id="reminders">
+            <!-- Reminders will be injected here -->
+        </div>
+
+        <!-- Center Content -->
+        <div class="center-content">
+            <div class="date" id="date"></div>
+            <div class="clock-container">
+                <div class="clock" id="clock"></div>
+                <div class="period" id="period"></div>
+            </div>
+            
+            <!-- Dexcom Display -->
+            <div class="dexcom-container" id="dexcom">
+                <div>
+                    <div class="dexcom-value" id="glucose-value">127</div>
+                    <div class="dexcom-time" id="glucose-time">2 min ago</div>
+                </div>
+                <div class="dexcom-trend" id="glucose-trend">→</div>
+                <div class="dexcom-info">
+                    <div>mg/dL</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Motivational Text Ticker -->
+        <div class="ticker-container" id="ticker-container" style="display: none;">
+            <div class="ticker">
+                <span class="ticker-text">Focus on progress, not perfection</span>
+                <span class="ticker-text">Small consistent steps lead to remarkable results</span>
+                <span class="ticker-text">Today is an opportunity to grow</span>
+                <span class="ticker-text">Focus on progress, not perfection</span>
+                <span class="ticker-text">Small consistent steps lead to remarkable results</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Status Bar -->
+    <div class="status-bar">
+        <div class="status-item">
+            <div class="status-dot"></div>
+            <span>Nightscout</span>
+        </div>
+        <div class="status-item" id="mode-indicator">
+            <span>Day Mode</span>
+        </div>
+    </div>
+
+    <script>
+        // ===== CLOCK =====
+        function updateClock() {
+            const now = new Date();
+            
+            // Convert to Mountain Time
+            const options = { timeZone: 'America/Denver', hour: 'numeric', minute: '2-digit', hour12: true };
+            const timeString = now.toLocaleTimeString('en-US', options);
+            
+            // Split time and period
+            const [time, period] = timeString.split(' ');
+            
+            document.getElementById('clock').textContent = time;
+            document.getElementById('period').textContent = period;
+            
+            // Update date
+            const dateOptions = { 
+                timeZone: 'America/Denver',
+                weekday: 'long', 
+                month: 'long', 
+                day: 'numeric', 
+                year: 'numeric' 
+            };
+            document.getElementById('date').textContent = now.toLocaleDateString('en-US', dateOptions).toUpperCase();
+        }
+
+        // ===== LIGHT/DARK MODE =====
+        function updateTheme() {
+            const now = new Date();
+            const mountainTime = new Date(now.toLocaleString('en-US', { timeZone: 'America/Denver' }));
+            const hour = mountainTime.getHours();
+            
+            // Day mode: 6am-8pm, Night mode: 8pm-6am
+            const isDayMode = hour >= 6 && hour < 20;
+            
+            if (isDayMode) {
+                document.body.classList.add('light-mode');
+                document.getElementById('mode-indicator').innerHTML = '<span>Day Mode</span>';
+            } else {
+                document.body.classList.remove('light-mode');
+                document.getElementById('mode-indicator').innerHTML = '<span>Night Mode</span>';
+            }
+        }
+
+        // ===== MOTIVATIONAL TICKER =====
+        function updateTicker() {
+            const now = new Date();
+            const mountainTime = new Date(now.toLocaleString('en-US', { timeZone: 'America/Denver' }));
+            const hour = mountainTime.getHours();
+            
+            // Show ticker between 7am-10am
+            const showTicker = hour >= 7 && hour < 10;
+            document.getElementById('ticker-container').style.display = showTicker ? 'block' : 'none';
+        }
+
+        // ===== NIGHTSCOUT CONFIGURATION =====
+        let NIGHTSCOUT_CONFIG = {
+            url: '',
+            apiSecret: '',
+            enabled: false
+        };
+
+        // Load config from local server
+        async function loadNightscoutConfig() {
+            try {
+                const response = await fetch('http://localhost:3000/api/config');
+                const config = await response.json();
+                
+                if (config.nightscout_url) {
+                    NIGHTSCOUT_CONFIG.url = config.nightscout_url;
+                    NIGHTSCOUT_CONFIG.apiSecret = config.nightscout_api_secret || '';
+                    NIGHTSCOUT_CONFIG.enabled = true;
+                    
+                    console.log('Nightscout config loaded:', NIGHTSCOUT_CONFIG.url);
+                    
+                    // Start fetching data immediately
+                    updateDexcomData();
+                    // Then fetch every 5 minutes
+                    setInterval(updateDexcomData, 5 * 60 * 1000);
+                }
+            } catch (error) {
+                console.log('Config not available, using mock data');
+                // Continue with mock data for testing
+            }
+        }
+
+        // ===== DEXCOM DATA =====
+        async function updateDexcomData() {
+            if (!NIGHTSCOUT_CONFIG.enabled) {
+                // Use mock data if Nightscout not configured
+                useMockDexcomData();
+                return;
+            }
+
+            try {
+                const url = `${NIGHTSCOUT_CONFIG.url}/api/v1/entries.json?count=1`;
+                const headers = {};
+                
+                // Add API secret if provided
+                if (NIGHTSCOUT_CONFIG.apiSecret) {
+                    headers['API-SECRET'] = NIGHTSCOUT_CONFIG.apiSecret;
+                }
+
+                const response = await fetch(url, { headers });
+                const data = await response.json();
+                
+                if (data && data.length > 0) {
+                    const entry = data[0];
+                    const glucoseValue = entry.sgv;
+                    const direction = entry.direction;
+                    const timestamp = new Date(entry.date);
+                    const minutesAgo = Math.round((Date.now() - timestamp) / 60000);
+                    
+                    // Update display
+                    document.getElementById('glucose-value').textContent = glucoseValue;
+                    document.getElementById('glucose-trend').textContent = getTrendArrow(direction);
+                    document.getElementById('glucose-time').textContent = `${minutesAgo} min ago`;
+                    
+                    // Update styling based on value
+                    updateGlucoseStatus(glucoseValue);
+                    
+                    console.log(`Glucose: ${glucoseValue} mg/dL, Trend: ${direction}, ${minutesAgo} min ago`);
+                }
+            } catch (error) {
+                console.error('Error fetching Nightscout data:', error);
+                // Fall back to mock data if fetch fails
+                useMockDexcomData();
+            }
+        }
+
+        // Convert Nightscout direction to arrow
+        function getTrendArrow(direction) {
+            const arrows = {
+                'DoubleUp': '↑↑',
+                'SingleUp': '↑',
+                'FortyFiveUp': '↗',
+                'Flat': '→',
+                'FortyFiveDown': '↘',
+                'SingleDown': '↓',
+                'DoubleDown': '↓↓',
+                'NOT COMPUTABLE': '?',
+                'RATE OUT OF RANGE': '?'
+            };
+            return arrows[direction] || '→';
+        }
+
+        // Update glucose container styling based on value
+        function updateGlucoseStatus(glucoseValue) {
+            const container = document.getElementById('dexcom');
+            container.classList.remove('warning', 'danger');
+            
+            // Danger: <70 or >180
+            if (glucoseValue < 70 || glucoseValue > 180) {
+                container.classList.add('danger');
+            } 
+            // Warning: 70-80 or 160-180
+            else if (glucoseValue < 80 || glucoseValue > 160) {
+                container.classList.add('warning');
+            }
+        }
+
+        // Mock data for testing (when Nightscout not configured)
+        function useMockDexcomData() {
+            const mockData = {
+                value: Math.floor(Math.random() * 100) + 80,
+                trend: ['↑↑', '↑', '→', '↓', '↓↓'][Math.floor(Math.random() * 5)],
+                minutesAgo: Math.floor(Math.random() * 15) + 1
+            };
+
+            document.getElementById('glucose-value').textContent = mockData.value;
+            document.getElementById('glucose-trend').textContent = mockData.trend;
+            document.getElementById('glucose-time').textContent = `${mockData.minutesAgo} min ago`;
+            
+            updateGlucoseStatus(mockData.value);
+        }
+
+        // ===== REMINDERS =====
+        const sampleReminders = [
+            "Take medication at 3pm",
+            "Team meeting at 2:30pm"
+        ];
+
+        function updateReminders() {
+            const container = document.getElementById('reminders');
+            container.innerHTML = sampleReminders.map(text => 
+                `<div class="reminder">${text}</div>`
+            ).join('');
+        }
+
+        // ===== CIRCUIT BOARD ANIMATION =====
+        class CircuitBoard {
+            constructor(canvas) {
+                this.canvas = canvas;
+                this.ctx = canvas.getContext('2d');
+                this.particles = [];
+                this.lines = [];
+                this.resize();
+                this.init();
+                
+                window.addEventListener('resize', () => this.resize());
+            }
+
+            resize() {
+                this.canvas.width = window.innerWidth;
+                this.canvas.height = window.innerHeight;
+            }
+
+            init() {
+                // Create subtle circuit lines
+                const numLines = 8;
+                for (let i = 0; i < numLines; i++) {
+                    this.lines.push({
+                        x1: Math.random() * this.canvas.width,
+                        y1: Math.random() * this.canvas.height,
+                        x2: Math.random() * this.canvas.width,
+                        y2: Math.random() * this.canvas.height,
+                        opacity: Math.random() * 0.15 + 0.05
+                    });
+                }
+
+                // Create subtle particles
+                const numParticles = 15;
+                for (let i = 0; i < numParticles; i++) {
+                    this.particles.push({
+                        x: Math.random() * this.canvas.width,
+                        y: Math.random() * this.canvas.height,
+                        vx: (Math.random() - 0.5) * 0.2,
+                        vy: (Math.random() - 0.5) * 0.2,
+                        radius: Math.random() * 1.5 + 0.5,
+                        opacity: Math.random() * 0.3 + 0.1
+                    });
+                }
+            }
+
+            draw() {
+                this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+
+                // Only draw in dark mode
+                const isDark = !document.body.classList.contains('light-mode');
+                if (!isDark) return;
+                
+                const lineColor = '107, 155, 209'; // accent-primary in dark mode
+                
+                this.lines.forEach(line => {
+                    this.ctx.strokeStyle = `rgba(${lineColor}, ${line.opacity})`;
+                    this.ctx.lineWidth = 0.5;
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(line.x1, line.y1);
+                    this.ctx.lineTo(line.x2, line.y2);
+                    this.ctx.stroke();
+
+                    // Subtle connection points
+                    this.ctx.fillStyle = `rgba(${lineColor}, ${line.opacity * 1.2})`;
+                    this.ctx.beginPath();
+                    this.ctx.arc(line.x1, line.y1, 2, 0, Math.PI * 2);
+                    this.ctx.fill();
+                    this.ctx.beginPath();
+                    this.ctx.arc(line.x2, line.y2, 2, 0, Math.PI * 2);
+                    this.ctx.fill();
+                });
+
+                // Draw and update particles
+                this.particles.forEach(particle => {
+                    particle.x += particle.vx;
+                    particle.y += particle.vy;
+
+                    // Wrap around edges
+                    if (particle.x < 0) particle.x = this.canvas.width;
+                    if (particle.x > this.canvas.width) particle.x = 0;
+                    if (particle.y < 0) particle.y = this.canvas.height;
+                    if (particle.y > this.canvas.height) particle.y = 0;
+
+                    // Subtle opacity variation
+                    particle.opacity += (Math.random() - 0.5) * 0.02;
+                    particle.opacity = Math.max(0.1, Math.min(0.4, particle.opacity));
+
+                    // Draw particle
+                    this.ctx.fillStyle = `rgba(${lineColor}, ${particle.opacity})`;
+                    this.ctx.beginPath();
+                    this.ctx.arc(particle.x, particle.y, particle.radius, 0, Math.PI * 2);
+                    this.ctx.fill();
+                });
+            }
+
+            animate() {
+                this.draw();
+                requestAnimationFrame(() => this.animate());
+            }
+        }
+
+        // ===== INITIALIZATION =====
+        const circuit = new CircuitBoard(document.getElementById('circuit-canvas'));
+        circuit.animate();
+
+        // Initial updates
+        updateClock();
+        updateTheme();
+        updateTicker();
+        loadNightscoutConfig();  // Load config and start Nightscout data fetching
+        updateReminders();
+
+        // Set intervals
+        setInterval(updateClock, 1000);
+        setInterval(updateTheme, 60000); // Check every minute
+        setInterval(updateTicker, 60000);
+    </script>
+</body>
+</html>
