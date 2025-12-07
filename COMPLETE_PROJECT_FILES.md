@@ -1,3 +1,12 @@
+# Complete Orange Pi Dashboard Project Files
+
+Copy each section below into separate files in your project.
+
+---
+
+## FILE: dashboard.html
+
+```html
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -279,10 +288,6 @@
             border-radius: 50%;
             background: var(--glucose-good);
         }
-
-        .status-dot.error {
-            background: var(--glucose-danger);
-        }
     </style>
 </head>
 <body>
@@ -307,8 +312,8 @@
             <!-- Dexcom Display -->
             <div class="dexcom-container" id="dexcom">
                 <div>
-                    <div class="dexcom-value" id="glucose-value">---</div>
-                    <div class="dexcom-time" id="glucose-time">Loading...</div>
+                    <div class="dexcom-value" id="glucose-value">127</div>
+                    <div class="dexcom-time" id="glucose-time">2 min ago</div>
                 </div>
                 <div class="dexcom-trend" id="glucose-trend">→</div>
                 <div class="dexcom-info">
@@ -332,8 +337,8 @@
     <!-- Status Bar -->
     <div class="status-bar">
         <div class="status-item">
-            <div class="status-dot" id="connection-status"></div>
-            <span id="connection-label">System</span>
+            <div class="status-dot"></div>
+            <span>System</span>
         </div>
         <div class="status-item" id="mode-indicator">
             <span>Day Mode</span>
@@ -359,8 +364,7 @@
                     CONFIG.nightscout.url = config.nightscout.url;
                     CONFIG.nightscout.apiSecret = config.nightscout.api_secret || '';
                     CONFIG.nightscout.enabled = true;
-                    console.log('Nightscout configured:', CONFIG.nightscout.url);
-                    updateConnectionStatus(true, 'Nightscout');
+                    console.log('Nightscout configured');
                 }
                 
                 // Supabase config
@@ -370,7 +374,7 @@
                     CONFIG.supabase.remindersTable = config.supabase.reminders_table || 'reminders';
                     CONFIG.supabase.motivationalTable = config.supabase.motivational_table || 'motivational_messages';
                     CONFIG.supabase.enabled = true;
-                    console.log('Supabase configured:', CONFIG.supabase.url);
+                    console.log('Supabase configured');
                 }
                 
                 // Display config
@@ -390,22 +394,8 @@
                 
             } catch (error) {
                 console.log('Config not available, using defaults and mock data');
-                updateConnectionStatus(false, 'Offline');
                 useMockDexcomData();
             }
-        }
-
-        // Update connection status indicator
-        function updateConnectionStatus(connected, label) {
-            const dot = document.getElementById('connection-status');
-            const labelEl = document.getElementById('connection-label');
-            
-            if (connected) {
-                dot.classList.remove('error');
-            } else {
-                dot.classList.add('error');
-            }
-            labelEl.textContent = label;
         }
 
         // ===== CLOCK =====
@@ -413,7 +403,7 @@
             const now = new Date();
             
             // Convert to Mountain Time
-            const options = { timeZone: CONFIG.display.timezone, hour: 'numeric', minute: '2-digit', hour12: true };
+            const options = { timeZone: 'America/Denver', hour: 'numeric', minute: '2-digit', hour12: true };
             const timeString = now.toLocaleTimeString('en-US', options);
             
             // Split time and period
@@ -424,7 +414,7 @@
             
             // Update date
             const dateOptions = { 
-                timeZone: CONFIG.display.timezone,
+                timeZone: 'America/Denver',
                 weekday: 'long', 
                 month: 'long', 
                 day: 'numeric', 
@@ -436,11 +426,11 @@
         // ===== LIGHT/DARK MODE =====
         function updateTheme() {
             const now = new Date();
-            const mountainTime = new Date(now.toLocaleString('en-US', { timeZone: CONFIG.display.timezone }));
+            const mountainTime = new Date(now.toLocaleString('en-US', { timeZone: 'America/Denver' }));
             const hour = mountainTime.getHours();
             
-            // Day mode based on config
-            const isDayMode = hour >= CONFIG.display.dayModeStart && hour < CONFIG.display.dayModeEnd;
+            // Day mode: 6am-8pm, Night mode: 8pm-6am
+            const isDayMode = hour >= 6 && hour < 20;
             
             if (isDayMode) {
                 document.body.classList.add('light-mode');
@@ -454,11 +444,11 @@
         // ===== MOTIVATIONAL TICKER =====
         function updateTicker() {
             const now = new Date();
-            const mountainTime = new Date(now.toLocaleString('en-US', { timeZone: CONFIG.display.timezone }));
+            const mountainTime = new Date(now.toLocaleString('en-US', { timeZone: 'America/Denver' }));
             const hour = mountainTime.getHours();
             
-            // Show ticker during configured hours
-            const showTicker = hour >= CONFIG.display.motivationalHoursStart && hour < CONFIG.display.motivationalHoursEnd;
+            // Show ticker between 7am-10am
+            const showTicker = hour >= 7 && hour < 10;
             document.getElementById('ticker-container').style.display = showTicker ? 'block' : 'none';
         }
 
@@ -478,11 +468,6 @@
                 }
 
                 const response = await fetch(url, { headers });
-                
-                if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}`);
-                }
-                
                 const data = await response.json();
                 
                 if (data && data.length > 0) {
@@ -497,13 +482,11 @@
                     document.getElementById('glucose-time').textContent = `${minutesAgo} min ago`;
                     
                     updateGlucoseStatus(glucoseValue);
-                    updateConnectionStatus(true, 'Nightscout');
                     console.log(`Glucose: ${glucoseValue} mg/dL, Trend: ${direction}, ${minutesAgo} min ago`);
                 }
             } catch (error) {
                 console.error('Error fetching Nightscout data:', error);
-                updateConnectionStatus(false, 'Error');
-                // Keep last known value, just update status
+                useMockDexcomData();
             }
         }
 
@@ -553,7 +536,7 @@
             updateGlucoseStatus(mockData.value);
         }
 
-        // ===== REMINDERS (from Supabase) =====
+        // ===== REMINDERS =====
         async function updateReminders() {
             if (!CONFIG.supabase.enabled) {
                 // Use mock reminders
@@ -573,11 +556,6 @@
                 };
 
                 const response = await fetch(url, { headers });
-                
-                if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}`);
-                }
-                
                 const data = await response.json();
                 
                 const reminderTexts = data.map(r => r.text);
@@ -585,7 +563,7 @@
                 console.log(`Loaded ${reminderTexts.length} reminders from Supabase`);
             } catch (error) {
                 console.error('Error fetching reminders from Supabase:', error);
-                // Fallback to empty
+                // Fallback to empty or mock data
                 displayReminders([]);
             }
         }
@@ -601,7 +579,7 @@
             }
         }
 
-        // ===== MOTIVATIONAL MESSAGES (from Supabase) =====
+        // ===== MOTIVATIONAL MESSAGES =====
         async function updateMotivationalMessages() {
             if (!CONFIG.supabase.enabled) {
                 // Use default messages (already in HTML)
@@ -616,11 +594,6 @@
                 };
 
                 const response = await fetch(url, { headers });
-                
-                if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}`);
-                }
-                
                 const data = await response.json();
                 
                 if (data && data.length > 0) {
@@ -763,3 +736,264 @@
     </script>
 </body>
 </html>
+```
+
+---
+
+## FILE: supabase-schema.sql
+
+```sql
+-- Supabase Database Schema for Orange Pi Dashboard
+-- Run this in your Supabase SQL Editor
+
+-- Table: reminders
+CREATE TABLE IF NOT EXISTS reminders (
+  id BIGSERIAL PRIMARY KEY,
+  text TEXT NOT NULL,
+  active BOOLEAN DEFAULT true,
+  priority INTEGER DEFAULT 0,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_reminders_active_priority 
+ON reminders(active, priority DESC);
+
+ALTER TABLE reminders ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Allow public read access" ON reminders
+FOR SELECT USING (true);
+
+CREATE POLICY "Allow authenticated write access" ON reminders
+FOR ALL USING (auth.role() = 'authenticated');
+
+INSERT INTO reminders (text, active, priority) VALUES
+  ('Take medication at 3pm', true, 1),
+  ('Team meeting at 2:30pm', true, 2),
+  ('Exercise for 30 minutes', true, 3)
+ON CONFLICT DO NOTHING;
+
+-- Table: motivational_messages
+CREATE TABLE IF NOT EXISTS motivational_messages (
+  id BIGSERIAL PRIMARY KEY,
+  text TEXT NOT NULL,
+  active BOOLEAN DEFAULT true,
+  display_order INTEGER DEFAULT 0,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_motivational_active_order 
+ON motivational_messages(active, display_order ASC);
+
+ALTER TABLE motivational_messages ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Allow public read access" ON motivational_messages
+FOR SELECT USING (true);
+
+CREATE POLICY "Allow authenticated write access" ON motivational_messages
+FOR ALL USING (auth.role() = 'authenticated');
+
+INSERT INTO motivational_messages (text, active, display_order) VALUES
+  ('Focus on progress, not perfection', true, 1),
+  ('Small consistent steps lead to remarkable results', true, 2),
+  ('Today is an opportunity to grow', true, 3),
+  ('Your health is your wealth', true, 4),
+  ('Every positive choice compounds over time', true, 5)
+ON CONFLICT DO NOTHING;
+
+-- Helper function for auto-updating updated_at
+CREATE OR REPLACE FUNCTION update_updated_at_column()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = NOW();
+    RETURN NEW;
+END;
+$$ language 'plpgsql';
+
+CREATE TRIGGER update_reminders_updated_at 
+BEFORE UPDATE ON reminders
+FOR EACH ROW
+EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_motivational_messages_updated_at 
+BEFORE UPDATE ON motivational_messages
+FOR EACH ROW
+EXECUTE FUNCTION update_updated_at_column();
+```
+
+---
+
+## FILE: .gitignore
+
+```
+# System files
+.DS_Store
+Thumbs.db
+*~
+
+# Logs
+*.log
+
+# Config files with sensitive data
+config.json
+.env
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# Python
+__pycache__/
+*.py[cod]
+
+# Node
+node_modules/
+```
+
+---
+
+## FILE: README.md
+
+```markdown
+# Orange Pi Dashboard - Health Monitoring Display
+
+A beautiful 7-inch health dashboard for Orange Pi that displays time, glucose readings from Nightscout, reminders, and motivational messages.
+
+## Features
+
+- **Clock:** Mountain Time, 12-hour format with AM/PM
+- **Glucose Display:** Real-time from Nightscout API, color-coded by range
+- **Reminders:** From Supabase database, displayed in left sidebar
+- **Motivational Messages:** From Supabase, scrolling ticker (7-10 AM only)
+- **Auto Light/Dark Mode:** 6 AM - 8 PM day mode, 8 PM - 6 AM night mode
+- **Web Configuration:** Manage everything from your phone
+- **Auto-Updates:** Daily at 7 AM Mountain Time from GitHub
+
+## Quick Start
+
+### 1. Flash SD Card
+- Download Armbian for Orange Pi Zero 2W
+- Flash with Balena Etcher
+- Boot Orange Pi
+
+### 2. Run Setup
+```bash
+ssh root@orangepi.local
+wget https://raw.githubusercontent.com/YOUR_USERNAME/dashboard-orangepi/main/setup.sh
+chmod +x setup.sh
+sudo bash setup.sh
+```
+
+### 3. Configure
+Open `http://orangepi.local:3000` from your phone:
+- Set Nightscout URL
+- Set Supabase credentials
+- Configure WiFi
+- Adjust settings
+
+## Supabase Setup
+
+Run `supabase-schema.sql` in your Supabase SQL Editor to create tables.
+
+## Configuration
+
+Settings stored in `/etc/dashboard/config.json`:
+- Nightscout URL & API secret
+- Supabase URL & anon key
+- Display preferences
+- Update schedule
+
+## Updates
+
+- **Automatic:** Every day at 7 AM
+- **Manual:** Click "Update Now" in config GUI
+
+## Documentation
+
+See `AI_AGENT_INSTRUCTIONS.md` for complete technical documentation.
+```
+
+---
+
+## PROJECT STRUCTURE
+
+```
+dashboard-orangepi/
+├── dashboard.html          # Main display (fullscreen browser)
+├── setup.sh               # Orange Pi installer
+├── supabase-schema.sql    # Database setup
+├── README.md              # User documentation
+├── .gitignore            # Git ignore rules
+└── AI_AGENT_INSTRUCTIONS.md  # Technical docs (create from briefing)
+```
+
+---
+
+## NEXT STEPS FOR AI AGENT
+
+1. **Create these files** in your project directory
+2. **Push to GitHub repository**
+3. **Wait for Blake to flash SD card** and boot Orange Pi
+4. **Help build config-server.py** with:
+   - WiFi management interface
+   - Hotspot mode toggle
+   - Phone-friendly GUI
+   - Settings management
+
+5. **Key features to implement:**
+   - Network configuration page
+   - Supabase credentials form
+   - Nightscout settings form
+   - Display customization options
+   - Manual update button
+
+6. **Remember:**
+   - Mobile-first design
+   - Error handling everywhere
+   - Graceful fallbacks
+   - Test before deploying
+   - Mountain Time is critical
+
+---
+
+## CONFIGURATION SCHEMA
+
+```json
+{
+  "nightscout": {
+    "url": "https://yourname.herokuapp.com",
+    "api_secret": ""
+  },
+  "supabase": {
+    "url": "https://your-project.supabase.co",
+    "anon_key": "your-anon-key",
+    "reminders_table": "reminders",
+    "motivational_table": "motivational_messages"
+  },
+  "display": {
+    "timezone": "America/Denver",
+    "day_mode_start": 6,
+    "day_mode_end": 20,
+    "motivational_hours_start": 7,
+    "motivational_hours_end": 10
+  },
+  "system": {
+    "auto_update": true,
+    "update_time": "07:00"
+  }
+}
+```
+
+---
+
+## DATA FLOW
+
+```
+Nightscout API → dashboard.html → Displays glucose (every 5 min)
+Supabase API → dashboard.html → Displays reminders (every 5 min)
+Supabase API → dashboard.html → Displays motivational (every hour, 7-10 AM only)
+Config GUI (port 3000) → config.json → dashboard.html reads settings
+GitHub → Auto-update (7 AM daily) → Browser refresh
+```

@@ -43,11 +43,12 @@ apt-get install -y -qq \
     python3-pip \
     python3-flask \
     network-manager \
-    unclutter
+    unclutter \
+    xdotool
 
 # Install Python packages
 echo "[3/10] Installing Python packages..."
-pip3 install flask gitpython requests --quiet
+pip3 install flask --quiet --break-system-packages 2>/dev/null || pip3 install flask --quiet
 
 # Create dashboard directory
 echo "[4/10] Creating dashboard directory..."
@@ -66,20 +67,20 @@ if [ -n "$REPO_URL" ]; then
 else
     echo "Skipping repository clone - you can add files manually to $DASHBOARD_DIR"
     # Create a basic index.html placeholder
-    cat > $DASHBOARD_DIR/index.html <<EOF
+    cat > $DASHBOARD_DIR/dashboard.html <<EOF
 <!DOCTYPE html>
 <html>
 <head><title>Dashboard Setup</title></head>
-<body style="display:flex;align-items:center;justify-content:center;height:100vh;font-family:sans-serif;">
+<body style="display:flex;align-items:center;justify-content:center;height:100vh;font-family:sans-serif;background:#0f0f14;color:#e8e8f0;">
     <div style="text-align:center;">
         <h1>Dashboard Setup Complete!</h1>
-        <p>Add your dashboard.html file to: $DASHBOARD_DIR</p>
-        <p>Access config at: http://orangepi.local:3000</p>
+        <p>Clone your repository to: $DASHBOARD_DIR</p>
+        <p>Or access config at: http://orangepi.local:3000</p>
     </div>
 </body>
 </html>
 EOF
-    chown $ACTUAL_USER:$ACTUAL_USER $DASHBOARD_DIR/index.html
+    chown $ACTUAL_USER:$ACTUAL_USER $DASHBOARD_DIR/dashboard.html
 fi
 
 # Create configuration directory
@@ -89,15 +90,32 @@ mkdir -p $CONFIG_DIR
 
 cat > $CONFIG_DIR/config.json <<EOF
 {
-    "nightscout_url": "",
-    "nightscout_api_secret": "",
-    "auto_update": true,
-    "update_time": "07:00",
-    "timezone": "America/Denver",
-    "day_mode_start": 6,
-    "day_mode_end": 20
+    "nightscout": {
+        "url": "",
+        "api_secret": ""
+    },
+    "supabase": {
+        "url": "",
+        "anon_key": "",
+        "reminders_table": "reminders",
+        "motivational_table": "motivational_messages"
+    },
+    "display": {
+        "timezone": "America/Denver",
+        "day_mode_start": 6,
+        "day_mode_end": 20,
+        "motivational_hours_start": 7,
+        "motivational_hours_end": 10
+    },
+    "system": {
+        "auto_update": true,
+        "update_time": "07:00",
+        "hostname": "orangepi"
+    }
 }
 EOF
+
+chmod 644 $CONFIG_DIR/config.json
 
 # Create auto-update script
 echo "[7/10] Creating auto-update script..."
@@ -144,319 +162,14 @@ cat > /etc/cron.d/dashboard-update <<EOF
 0 7 * * * root TZ=America/Denver /usr/local/bin/dashboard-update.sh
 EOF
 
-# Create config web server
-echo "[9/10] Creating configuration web server..."
-cat > /opt/dashboard/config-server.py <<'EOF'
-#!/usr/bin/env python3
-
-from flask import Flask, render_template_string, request, jsonify
-import json
-import os
-import subprocess
-import socket
-
-app = Flask(__name__)
-CONFIG_FILE = '/etc/dashboard/config.json'
-DASHBOARD_DIR = '/opt/dashboard'
-
-def load_config():
-    if os.path.exists(CONFIG_FILE):
-        with open(CONFIG_FILE, 'r') as f:
-            return json.load(f)
-    return {}
-
-def save_config(config):
-    with open(CONFIG_FILE, 'w') as f:
-        json.dump(config, f, indent=2)
-
-def get_git_status():
-    try:
-        os.chdir(DASHBOARD_DIR)
-        current = subprocess.check_output(['git', 'rev-parse', '--short', 'HEAD']).decode().strip()
-        branch = subprocess.check_output(['git', 'rev-parse', '--abbrev-ref', 'HEAD']).decode().strip()
-        
-        # Check for updates
-        subprocess.run(['git', 'fetch', 'origin'], capture_output=True)
-        local = subprocess.check_output(['git', 'rev-parse', 'HEAD']).decode().strip()
-        remote = subprocess.check_output(['git', 'rev-parse', 'origin/main']).decode().strip()
-        
-        updates_available = local != remote
-        
-        return {
-            'commit': current,
-            'branch': branch,
-            'updates_available': updates_available
-        }
-    except:
-        return {'commit': 'N/A', 'branch': 'N/A', 'updates_available': False}
-
-HTML_TEMPLATE = '''
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Dashboard Configuration</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { 
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-            background: #f5f7fa;
-            padding: 20px;
-        }
-        .container { max-width: 800px; margin: 0 auto; }
-        h1 { color: #1a1a2e; margin-bottom: 30px; }
-        .card {
-            background: white;
-            border-radius: 12px;
-            padding: 24px;
-            margin-bottom: 20px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-        }
-        .card h2 { 
-            color: #4a7ba7;
-            margin-bottom: 16px;
-            font-size: 18px;
-        }
-        .form-group { margin-bottom: 16px; }
-        label {
-            display: block;
-            margin-bottom: 6px;
-            color: #5a5a6a;
-            font-weight: 500;
-            font-size: 14px;
-        }
-        input, select {
-            width: 100%;
-            padding: 10px 12px;
-            border: 1px solid #e4e5e8;
-            border-radius: 6px;
-            font-size: 14px;
-        }
-        input:focus, select:focus {
-            outline: none;
-            border-color: #4a7ba7;
-        }
-        button {
-            background: #4a7ba7;
-            color: white;
-            border: none;
-            padding: 12px 24px;
-            border-radius: 6px;
-            cursor: pointer;
-            font-weight: 500;
-            font-size: 14px;
-        }
-        button:hover { background: #3d6589; }
-        button.secondary {
-            background: #6b5b95;
-        }
-        button.secondary:hover { background: #584a7a; }
-        .status { 
-            padding: 8px 12px;
-            border-radius: 6px;
-            font-size: 13px;
-            margin-bottom: 12px;
-        }
-        .status.success { background: #d4edda; color: #155724; }
-        .status.info { background: #d1ecf1; color: #0c5460; }
-        .status.warning { background: #fff3cd; color: #856404; }
-        .info-row {
-            display: flex;
-            justify-content: space-between;
-            padding: 8px 0;
-            border-bottom: 1px solid #f0f0f0;
-        }
-        .info-row:last-child { border-bottom: none; }
-        .info-label { color: #8a8a9a; font-size: 13px; }
-        .info-value { font-weight: 500; font-size: 13px; }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <h1>🎛️ Dashboard Configuration</h1>
-        
-        <!-- System Info -->
-        <div class="card">
-            <h2>System Information</h2>
-            <div class="info-row">
-                <span class="info-label">Device</span>
-                <span class="info-value">Orange Pi Zero 2</span>
-            </div>
-            <div class="info-row">
-                <span class="info-label">Hostname</span>
-                <span class="info-value">{{ hostname }}</span>
-            </div>
-            <div class="info-row">
-                <span class="info-label">IP Address</span>
-                <span class="info-value">{{ ip_address }}</span>
-            </div>
-        </div>
-
-        <!-- Git Status -->
-        <div class="card">
-            <h2>Updates</h2>
-            <div class="info-row">
-                <span class="info-label">Current Version</span>
-                <span class="info-value">{{ git_status.commit }}</span>
-            </div>
-            <div class="info-row">
-                <span class="info-label">Branch</span>
-                <span class="info-value">{{ git_status.branch }}</span>
-            </div>
-            {% if git_status.updates_available %}
-            <div class="status warning">Updates available!</div>
-            {% else %}
-            <div class="status success">Up to date ✓</div>
-            {% endif %}
-            <button onclick="updateNow()">Update Now</button>
-            <button class="secondary" onclick="restartDisplay()">Restart Display</button>
-        </div>
-
-        <!-- Nightscout Config -->
-        <div class="card">
-            <h2>Nightscout Configuration</h2>
-            <form onsubmit="saveConfig(event)">
-                <div class="form-group">
-                    <label>Nightscout URL</label>
-                    <input type="url" name="nightscout_url" value="{{ config.nightscout_url }}" 
-                           placeholder="https://yourname.herokuapp.com">
-                </div>
-                <div class="form-group">
-                    <label>API Secret (optional)</label>
-                    <input type="password" name="nightscout_api_secret" value="{{ config.nightscout_api_secret }}">
-                </div>
-                <button type="submit">Save Configuration</button>
-            </form>
-        </div>
-
-        <!-- Display Settings -->
-        <div class="card">
-            <h2>Display Settings</h2>
-            <form onsubmit="saveConfig(event)">
-                <div class="form-group">
-                    <label>Day Mode Start (Hour)</label>
-                    <input type="number" name="day_mode_start" value="{{ config.day_mode_start }}" min="0" max="23">
-                </div>
-                <div class="form-group">
-                    <label>Day Mode End (Hour)</label>
-                    <input type="number" name="day_mode_end" value="{{ config.day_mode_end }}" min="0" max="23">
-                </div>
-                <button type="submit">Save Settings</button>
-            </form>
-        </div>
-
-        <!-- System Actions -->
-        <div class="card">
-            <h2>System Actions</h2>
-            <button onclick="rebootDevice()">Reboot Device</button>
-            <button class="secondary" onclick="viewLogs()">View Update Logs</button>
-        </div>
-    </div>
-
-    <script>
-        function saveConfig(e) {
-            e.preventDefault();
-            const formData = new FormData(e.target);
-            const config = Object.fromEntries(formData);
-            
-            fetch('/api/config', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify(config)
-            }).then(r => r.json()).then(data => {
-                alert(data.message);
-                location.reload();
-            });
-        }
-
-        function updateNow() {
-            if (confirm('Update dashboard now?')) {
-                fetch('/api/update', {method: 'POST'})
-                    .then(r => r.json())
-                    .then(data => alert(data.message));
-            }
-        }
-
-        function restartDisplay() {
-            if (confirm('Restart the dashboard display?')) {
-                fetch('/api/restart-display', {method: 'POST'})
-                    .then(r => r.json())
-                    .then(data => alert(data.message));
-            }
-        }
-
-        function rebootDevice() {
-            if (confirm('Reboot the entire device? This will take ~30 seconds.')) {
-                fetch('/api/reboot', {method: 'POST'});
-                alert('Device is rebooting...');
-            }
-        }
-
-        function viewLogs() {
-            window.open('/api/logs', '_blank');
-        }
-    </script>
-</body>
-</html>
-'''
-
-@app.route('/')
-def index():
-    config = load_config()
-    git_status = get_git_status()
-    hostname = socket.gethostname()
-    
-    try:
-        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        s.connect(("8.8.8.8", 80))
-        ip_address = s.getsockname()[0]
-        s.close()
-    except:
-        ip_address = 'N/A'
-    
-    return render_template_string(HTML_TEMPLATE, 
-                                config=config, 
-                                git_status=git_status,
-                                hostname=hostname,
-                                ip_address=ip_address)
-
-@app.route('/api/config', methods=['POST'])
-def update_config():
-    config = load_config()
-    new_config = request.json
-    config.update(new_config)
-    save_config(config)
-    return jsonify({'message': 'Configuration saved successfully!'})
-
-@app.route('/api/update', methods=['POST'])
-def update_now():
-    result = subprocess.run(['/usr/local/bin/dashboard-update.sh'], capture_output=True)
-    return jsonify({'message': 'Update completed! Check logs for details.'})
-
-@app.route('/api/restart-display', methods=['POST'])
-def restart_display():
-    subprocess.run(['pkill', '-f', 'chromium'])
-    return jsonify({'message': 'Display restarting...'})
-
-@app.route('/api/reboot', methods=['POST'])
-def reboot():
-    subprocess.Popen(['reboot'])
-    return jsonify({'message': 'Rebooting...'})
-
-@app.route('/api/logs')
-def view_logs():
-    try:
-        with open('/var/log/dashboard-update.log', 'r') as f:
-            logs = f.read()
-        return f'<pre>{logs}</pre>'
-    except:
-        return '<pre>No logs available</pre>'
-
-if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=3000)
-EOF
-
-chmod +x /opt/dashboard/config-server.py
+# The config-server.py should already be in the repo, make it executable
+echo "[9/10] Setting up configuration web server..."
+if [ -f "$DASHBOARD_DIR/config-server.py" ]; then
+    chmod +x $DASHBOARD_DIR/config-server.py
+    echo "Using config-server.py from repository"
+else
+    echo "Warning: config-server.py not found in repository"
+fi
 
 # Create systemd service for config server
 cat > /etc/systemd/system/dashboard-config.service <<EOF
@@ -468,8 +181,10 @@ After=network.target
 Type=simple
 User=root
 WorkingDirectory=/opt/dashboard
+Environment=PYTHONUNBUFFERED=1
 ExecStart=/usr/bin/python3 /opt/dashboard/config-server.py
 Restart=always
+RestartSec=5
 
 [Install]
 WantedBy=multi-user.target
@@ -487,6 +202,9 @@ xset s noblank
 # Hide cursor after 1 second of inactivity
 unclutter -idle 1 &
 
+# Wait for network
+sleep 5
+
 # Start Chromium in kiosk mode
 chromium --kiosk --noerrdialogs --disable-infobars --disable-session-crashed-bubble --check-for-update-interval=31536000 file:///opt/dashboard/dashboard.html &
 EOF
@@ -502,7 +220,8 @@ autologin-user-timeout=0
 user-session=openbox
 EOF
 
-# Enable services
+# Enable and start services
+systemctl daemon-reload
 systemctl enable lightdm
 systemctl enable dashboard-config
 systemctl start dashboard-config
@@ -516,7 +235,10 @@ echo "Next steps:"
 echo "1. Reboot: sudo reboot"
 echo "2. Dashboard will auto-start on boot"
 echo "3. Access config at: http://orangepi.local:3000"
-echo "4. Add your dashboard.html to: $DASHBOARD_DIR"
+echo "4. Configure Nightscout and Supabase via web GUI"
+echo ""
+echo "Dashboard location: $DASHBOARD_DIR"
+echo "Config location: $CONFIG_DIR/config.json"
 echo ""
 echo "Daily updates: 7 AM Mountain Time"
 echo "Manual update: Use web interface"
