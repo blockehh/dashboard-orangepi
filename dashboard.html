@@ -81,6 +81,36 @@
             grid-template-rows: 1fr auto;
             padding: 16px;
             gap: 16px;
+            transition: grid-template-columns 0.5s ease;
+        }
+
+        /* Fullscreen mode when no reminders */
+        .dashboard.fullscreen {
+            grid-template-columns: 1fr;
+        }
+
+        .dashboard.fullscreen .reminders-bar {
+            display: none;
+        }
+
+        .dashboard.fullscreen .center-content {
+            grid-column: 1;
+        }
+
+        .dashboard.fullscreen .clock {
+            font-size: 160px;
+        }
+
+        .dashboard.fullscreen .period {
+            font-size: 48px;
+        }
+
+        .dashboard.fullscreen .dexcom-value {
+            font-size: 96px;
+        }
+
+        .dashboard.fullscreen .dexcom-trend {
+            font-size: 68px;
         }
 
         /* Left Sidebar - Reminders */
@@ -538,30 +568,23 @@
             }
         }
 
-        // Mock data for testing (when Nightscout not configured)
+        // Show error state when Nightscout not configured or unavailable
         function useMockDexcomData() {
-            const mockData = {
-                value: Math.floor(Math.random() * 100) + 80,
-                trend: ['↑↑', '↑', '→', '↓', '↓↓'][Math.floor(Math.random() * 5)],
-                minutesAgo: Math.floor(Math.random() * 15) + 1
-            };
-
-            document.getElementById('glucose-value').textContent = mockData.value;
-            document.getElementById('glucose-trend').textContent = mockData.trend;
-            document.getElementById('glucose-time').textContent = `${mockData.minutesAgo} min ago`;
+            document.getElementById('glucose-value').textContent = 'ERR';
+            document.getElementById('glucose-trend').textContent = '--';
+            document.getElementById('glucose-time').textContent = 'Not connected';
             
-            updateGlucoseStatus(mockData.value);
+            // Set error styling
+            const container = document.getElementById('dexcom');
+            container.classList.remove('warning');
+            container.classList.add('danger');
         }
 
         // ===== REMINDERS (from Supabase) =====
         async function updateReminders() {
             if (!CONFIG.supabase.enabled) {
-                // Use mock reminders
-                const sampleReminders = [
-                    "Take medication at 3pm",
-                    "Team meeting at 2:30pm"
-                ];
-                displayReminders(sampleReminders);
+                // No Supabase configured - show empty (fullscreen mode)
+                displayReminders([]);
                 return;
             }
 
@@ -592,12 +615,16 @@
 
         function displayReminders(reminders) {
             const container = document.getElementById('reminders');
+            const dashboard = document.querySelector('.dashboard');
+            
             if (reminders.length > 0) {
                 container.innerHTML = reminders.map(text => 
                     `<div class="reminder">${text}</div>`
                 ).join('');
+                dashboard.classList.remove('fullscreen');
             } else {
                 container.innerHTML = '';
+                dashboard.classList.add('fullscreen');
             }
         }
 
