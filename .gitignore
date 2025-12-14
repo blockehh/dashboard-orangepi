@@ -15,6 +15,7 @@ yarn-debug.log*
 yarn-error.log*
 
 # Config files with sensitive data
+config/
 config.json
 .env
 .env.local
