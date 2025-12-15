@@ -1163,6 +1163,16 @@ HTML_TEMPLATE = '''
 
 # ===== ROUTES =====
 
+@app.route('/dashboard')
+def serve_dashboard():
+    """Serve the dashboard HTML file"""
+    dashboard_path = os.path.join(DASHBOARD_DIR, 'dashboard.html')
+    try:
+        with open(dashboard_path, 'r', encoding='utf-8') as f:
+            return f.read(), 200, {'Content-Type': 'text/html'}
+    except Exception as e:
+        return f"Error loading dashboard: {e}", 500
+
 @app.route('/')
 def index():
     """Main configuration page"""
