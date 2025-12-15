@@ -514,7 +514,7 @@
                 const headers = {};
                 
                 if (CONFIG.nightscout.apiSecret) {
-                    headers['API-SECRET'] = CONFIG.nightscout.apiSecret;
+                    headers['api-secret'] = CONFIG.nightscout.apiSecret;
                 }
 
                 const response = await fetch(url, { headers });
