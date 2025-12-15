@@ -373,10 +373,11 @@
     <script>
         // ===== CONFIGURATION =====
         // Fallback config - used if config server is unavailable
+        // NOTE: api_secret must be SHA1 hash of your Nightscout API_SECRET
         let CONFIG = {
             nightscout: { 
                 url: 'https://nightscout.brhapp.com', 
-                apiSecret: '12h1-123h-ar45-asd5', 
+                apiSecret: '9fd0dbf1850684ab1c39b0735721337f4b2ab9b1', 
                 enabled: true 
             },
             supabase: { 
