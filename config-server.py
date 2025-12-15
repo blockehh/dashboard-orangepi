@@ -1302,6 +1302,33 @@ def reboot():
     success, message = reboot_system()
     return jsonify({'success': success, 'message': message})
 
+# ===== NIGHTSCOUT PROXY (avoids CORS issues) =====
+@app.route('/api/nightscout/entries')
+def nightscout_entries():
+    """Proxy Nightscout entries to avoid CORS issues"""
+    config = load_config()
+    ns_url = config.get('nightscout', {}).get('url', '')
+    ns_secret = config.get('nightscout', {}).get('api_secret', '')
+    
+    if not ns_url:
+        return jsonify({'error': 'Nightscout URL not configured'}), 400
+    
+    try:
+        import urllib.request
+        count = request.args.get('count', '1')
+        api_url = f"{ns_url.rstrip('/')}/api/v1/entries.json?count={count}"
+        
+        req = urllib.request.Request(api_url)
+        req.add_header('api-secret', ns_secret)
+        req.add_header('User-Agent', 'OrangePi-Dashboard')
+        
+        with urllib.request.urlopen(req, timeout=15) as response:
+            data = response.read().decode('utf-8')
+            return app.response_class(response=data, status=200, mimetype='application/json')
+    except Exception as e:
+        logger.error(f"Nightscout proxy error: {e}")
+        return jsonify({'error': str(e)}), 500
+
 # ===== MAIN =====
 if __name__ == '__main__':
     # Ensure config directory exists

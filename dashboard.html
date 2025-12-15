@@ -510,14 +510,10 @@
             }
 
             try {
-                const url = `${CONFIG.nightscout.url}/api/v1/entries.json?count=1`;
-                const headers = {};
+                // Use local proxy to avoid CORS issues
+                const url = 'http://localhost:3000/api/nightscout/entries?count=1';
                 
-                if (CONFIG.nightscout.apiSecret) {
-                    headers['api-secret'] = CONFIG.nightscout.apiSecret;
-                }
-
-                const response = await fetch(url, { headers });
+                const response = await fetch(url);
                 
                 if (!response.ok) {
                     throw new Error(`HTTP ${response.status}`);
