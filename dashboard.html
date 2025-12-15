@@ -77,10 +77,10 @@
             z-index: 1;
             height: 100vh;
             display: grid;
-            grid-template-columns: 280px 1fr auto;
+            grid-template-columns: 320px 1fr auto;
             grid-template-rows: 1fr auto;
-            padding: 16px;
-            gap: 16px;
+            padding: 20px;
+            gap: 20px;
             transition: grid-template-columns 0.5s ease;
         }
 
@@ -98,19 +98,19 @@
         }
 
         .dashboard.fullscreen .clock {
-            font-size: 160px;
+            font-size: 220px;
         }
 
         .dashboard.fullscreen .period {
-            font-size: 48px;
+            font-size: 64px;
         }
 
         .dashboard.fullscreen .dexcom-value {
-            font-size: 96px;
+            font-size: 140px;
         }
 
         .dashboard.fullscreen .dexcom-trend {
-            font-size: 68px;
+            font-size: 100px;
         }
 
         /* Left Sidebar - Reminders */
@@ -126,9 +126,9 @@
         .reminder {
             background: var(--bg-secondary);
             border: 1px solid var(--border-subtle);
-            border-radius: 8px;
-            padding: 12px 16px;
-            font-size: 13px;
+            border-radius: 10px;
+            padding: 16px 20px;
+            font-size: 18px;
             font-weight: 500;
             color: var(--text-primary);
             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
@@ -167,16 +167,16 @@
 
         .clock {
             font-family: 'Libre Franklin', sans-serif;
-            font-size: 120px;
+            font-size: 180px;
             font-weight: 800;
-            letter-spacing: -3px;
+            letter-spacing: -4px;
             line-height: 1;
             color: var(--accent-primary);
         }
 
         .period {
             font-family: 'DM Sans', sans-serif;
-            font-size: 36px;
+            font-size: 54px;
             font-weight: 300;
             color: var(--accent-secondary);
             letter-spacing: 2px;
@@ -197,30 +197,30 @@
 
         .dexcom-value {
             font-family: 'Libre Franklin', sans-serif;
-            font-size: 72px;
+            font-size: 100px;
             font-weight: 800;
             color: var(--glucose-good);
             line-height: 1;
-            letter-spacing: -2px;
+            letter-spacing: -3px;
         }
 
         .dexcom-trend {
-            font-size: 52px;
+            font-size: 72px;
             line-height: 1;
             color: var(--text-secondary);
         }
 
         .dexcom-info {
             font-family: 'DM Sans', sans-serif;
-            font-size: 14px;
+            font-size: 20px;
             color: var(--text-tertiary);
             font-weight: 500;
         }
 
         .dexcom-time {
-            font-size: 12px;
+            font-size: 18px;
             color: var(--text-tertiary);
-            margin-top: 6px;
+            margin-top: 8px;
             font-weight: 400;
         }
 
@@ -262,10 +262,10 @@
 
         .ticker-text {
             font-family: 'DM Sans', sans-serif;
-            font-size: 16px;
+            font-size: 22px;
             font-weight: 500;
             color: var(--accent-primary);
-            padding: 0 50px;
+            padding: 0 60px;
             letter-spacing: 0.5px;
         }
 
@@ -277,9 +277,9 @@
         /* Date Display */
         .date {
             font-family: 'DM Sans', sans-serif;
-            font-size: 15px;
+            font-size: 22px;
             color: var(--text-tertiary);
-            letter-spacing: 1px;
+            letter-spacing: 2px;
             text-align: center;
             font-weight: 500;
             text-transform: uppercase;
@@ -288,11 +288,11 @@
         /* Status Indicators */
         .status-bar {
             position: absolute;
-            bottom: 16px;
-            right: 16px;
+            bottom: 20px;
+            right: 20px;
             display: flex;
-            gap: 16px;
-            font-size: 11px;
+            gap: 20px;
+            font-size: 16px;
             color: var(--text-tertiary);
             font-weight: 500;
         }
@@ -300,12 +300,12 @@
         .status-item {
             display: flex;
             align-items: center;
-            gap: 6px;
+            gap: 8px;
         }
 
         .status-dot {
-            width: 6px;
-            height: 6px;
+            width: 10px;
+            height: 10px;
             border-radius: 50%;
             background: var(--glucose-good);
         }
@@ -372,16 +372,27 @@
 
     <script>
         // ===== CONFIGURATION =====
+        // Fallback config - used if config server is unavailable
         let CONFIG = {
-            nightscout: { url: '', apiSecret: '', enabled: false },
-            supabase: { url: '', anonKey: '', remindersTable: 'reminders', motivationalTable: 'motivational_messages', enabled: false },
+            nightscout: { 
+                url: 'https://nightscout.brhapp.com', 
+                apiSecret: '12h1-123h-ar45-asd5', 
+                enabled: true 
+            },
+            supabase: { 
+                url: 'https://supabasekong-clocknotes.app.brhapp.com', 
+                anonKey: 'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJzdXBhYmFzZSIsImlhdCI6MTc2NTA2MzI2MCwiZXhwIjo0OTIwNzM2ODYwLCJyb2xlIjoiYW5vbiJ9.Htqt8qMmRSJmDX-jCOB3yMmIGFKf-4ALghYelk5b1cs', 
+                remindersTable: 'reminders', 
+                motivationalTable: 'motivational_messages', 
+                enabled: true 
+            },
             display: { timezone: 'America/Denver', dayModeStart: 6, dayModeEnd: 20, motivationalHoursStart: 7, motivationalHoursEnd: 10 }
         };
 
-        // Load all configuration from local server
+        // Load all configuration from local server (or use fallback)
         async function loadConfig() {
             try {
-                const response = await fetch('http://localhost:3000/api/config');
+                const response = await fetch('http://localhost:3000/api/config', { timeout: 3000 });
                 const config = await response.json();
                 
                 // Nightscout config
@@ -389,8 +400,7 @@
                     CONFIG.nightscout.url = config.nightscout.url;
                     CONFIG.nightscout.apiSecret = config.nightscout.api_secret || '';
                     CONFIG.nightscout.enabled = true;
-                    console.log('Nightscout configured:', CONFIG.nightscout.url);
-                    updateConnectionStatus(true, 'Nightscout');
+                    console.log('Nightscout configured from server:', CONFIG.nightscout.url);
                 }
                 
                 // Supabase config
@@ -400,7 +410,7 @@
                     CONFIG.supabase.remindersTable = config.supabase.reminders_table || 'reminders';
                     CONFIG.supabase.motivationalTable = config.supabase.motivational_table || 'motivational_messages';
                     CONFIG.supabase.enabled = true;
-                    console.log('Supabase configured:', CONFIG.supabase.url);
+                    console.log('Supabase configured from server:', CONFIG.supabase.url);
                 }
                 
                 // Display config
@@ -408,21 +418,20 @@
                     CONFIG.display = { ...CONFIG.display, ...config.display };
                 }
                 
-                // Start data fetching
-                updateDexcomData();
-                updateReminders();
-                updateMotivationalMessages();
-                
-                // Set intervals
-                setInterval(updateDexcomData, 5 * 60 * 1000); // Every 5 minutes
-                setInterval(updateReminders, 5 * 60 * 1000);
-                setInterval(updateMotivationalMessages, 60 * 60 * 1000); // Every hour
-                
             } catch (error) {
-                console.log('Config not available, using defaults and mock data');
-                updateConnectionStatus(false, 'Offline');
-                useMockDexcomData();
+                console.log('Config server unavailable, using built-in fallback config');
             }
+            
+            // Always start data fetching (using fallback or server config)
+            console.log('Starting data fetch with config:', CONFIG.nightscout.url, CONFIG.supabase.url);
+            updateDexcomData();
+            updateReminders();
+            updateMotivationalMessages();
+            
+            // Set intervals
+            setInterval(updateDexcomData, 5 * 60 * 1000); // Every 5 minutes
+            setInterval(updateReminders, 5 * 60 * 1000);
+            setInterval(updateMotivationalMessages, 60 * 60 * 1000); // Every hour
         }
 
         // Update connection status indicator
