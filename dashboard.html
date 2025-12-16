@@ -430,8 +430,8 @@
             updateMotivationalMessages();
             
             // Set intervals
-            setInterval(updateDexcomData, 5 * 60 * 1000); // Every 5 minutes
-            setInterval(updateReminders, 5 * 60 * 1000);
+            setInterval(updateDexcomData, 60 * 1000); // Every 1 minute for fresh glucose data
+            setInterval(updateReminders, 5 * 60 * 1000); // Reminders every 5 minutes
             setInterval(updateMotivationalMessages, 60 * 60 * 1000); // Every hour
         }
 
