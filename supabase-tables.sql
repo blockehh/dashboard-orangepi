@@ -55,3 +55,5 @@ INSERT INTO public.motivational_messages (text, display_order, active) VALUES
 SELECT 'reminders' as table_name, count(*) as rows FROM public.reminders
 UNION ALL
 SELECT 'motivational_messages', count(*) FROM public.motivational_messages;
+
+

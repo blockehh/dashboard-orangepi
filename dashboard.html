@@ -9,33 +9,33 @@
     <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@400;500;700&family=Libre+Franklin:wght@300;400;600;800&display=swap" rel="stylesheet">
     <style>
         :root {
-            --bg-primary: #0f0f14;
-            --bg-secondary: #1a1a22;
-            --bg-tertiary: #25252f;
-            --accent-primary: #7eb3e8;
-            --accent-secondary: #a99be0;
-            --text-primary: #f0f0f8;
-            --text-secondary: #b8b8c8;
-            --text-tertiary: #8a8aa0;
-            --glucose-good: #6fcf97;
-            --glucose-warning: #e8b86d;
-            --glucose-danger: #e87878;
-            --border-subtle: #3a3a4a;
+            --bg-primary: #0d0f1a;
+            --bg-secondary: #16182a;
+            --bg-tertiary: #1e1f35;
+            --accent-primary: #8b7cff;
+            --accent-secondary: #6366f1;
+            --text-primary: #e6e8f0;
+            --text-secondary: #c7c9d0;
+            --text-tertiary: #9ba1b3;
+            --glucose-good: #10b981;
+            --glucose-warning: #f59e0b;
+            --glucose-danger: #ef4444;
+            --border-subtle: #2a2d45;
         }
 
         .light-mode {
-            --bg-primary: #fafbfc;
+            --bg-primary: #f8fafc;
             --bg-secondary: #ffffff;
-            --bg-tertiary: #f4f5f7;
-            --accent-primary: #4a7ba7;
-            --accent-secondary: #6b5b95;
-            --text-primary: #1a1a24;
-            --text-secondary: #5a5a6a;
-            --text-tertiary: #8a8a9a;
-            --glucose-good: #3d9970;
-            --glucose-warning: #b8883b;
-            --glucose-danger: #b84d4d;
-            --border-subtle: #e4e5e8;
+            --bg-tertiary: #f1f5f9;
+            --accent-primary: #6366f1;
+            --accent-secondary: #8b7cff;
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --text-tertiary: #94a3b8;
+            --glucose-good: #059669;
+            --glucose-warning: #d97706;
+            --glucose-danger: #dc2626;
+            --border-subtle: #e2e8f0;
         }
 
         * {
@@ -730,7 +730,7 @@
                 const isDark = !document.body.classList.contains('light-mode');
                 if (!isDark) return;
                 
-                const lineColor = '107, 155, 209'; // accent-primary in dark mode
+                const lineColor = '139, 124, 255'; // accent-primary in dark mode
                 
                 this.lines.forEach(line => {
                     this.ctx.strokeStyle = `rgba(${lineColor}, ${line.opacity})`;
